@@ -104,6 +104,10 @@ class CacheMachine(object):
             log.debug('cache hit: %s' % self.query_string)
             for obj in cached:
                 obj.from_cache = True
+
+                if not CACHE_UNIQUE_DB:
+                    obj._state.db = self.db
+
                 yield obj
             return
 
@@ -174,6 +178,11 @@ class CachingQuerySet(models.query.QuerySet):
         keys = dict((byid(self.model._cache_key(pk, self.db)), pk) for pk in pks)
         cached = dict((k, v) for k, v in cache.get_many(keys).items()
                       if v is not None)
+
+        # Ensure the restore model uses the correct DB
+        if not CACHE_UNIQUE_DB:
+            for v in cached.values():
+                v._state.db = self.db
 
         # Pick up the objects we missed.
         missed = [pk for key, pk in keys.items() if key not in cached]
