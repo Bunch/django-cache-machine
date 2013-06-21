@@ -25,6 +25,7 @@ CACHE_PREFIX = getattr(settings, 'CACHE_PREFIX', '')
 FETCH_BY_ID = getattr(settings, 'FETCH_BY_ID', False)
 CACHE_EMPTY_QUERYSETS = getattr(settings, 'CACHE_EMPTY_QUERYSETS', False)
 TIMEOUT = getattr(settings, 'CACHE_COUNT_TIMEOUT', None)
+CACHE_UNIQUE_DB = getattr(settings, 'CACHE_UNIQUE_DB', True)
 
 
 class CachingManager(models.Manager):
@@ -85,7 +86,10 @@ class CacheMachine(object):
         master), throwing a Django ValueError in the process. Django prevents
         cross DB model saving among related objects.
         """
-        query_db_string = u'qs:%s::db:%s' % (self.query_string, self.db)
+        if CACHE_UNIQUE_DB:
+            query_db_string = u'qs:%s::db:%s' % (self.query_string, self.db)
+        else:
+            query_db_string = u'qs:%s' % self.query_string
         return make_key(query_db_string, with_locale=False)
 
     def __iter__(self):
@@ -238,7 +242,10 @@ class CachingMixin(object):
 
         For the Addon class, with a pk of 2, we get "o:addons.addon:2".
         """
-        key_parts = ('o', cls._meta, pk, db)
+        if CACHE_UNIQUE_DB:
+            key_parts = ('o', cls._meta, pk, db)
+        else:
+            key_parts = ('o', cls._meta, pk)
         return ':'.join(map(encoding.smart_unicode, key_parts))
 
     def _cache_keys(self):
